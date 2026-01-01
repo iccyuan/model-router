@@ -7,7 +7,7 @@ import (
 	_ "github.com/caddyserver/caddy/v2/modules/standard"
 	
 	// 导入自定义模块
-	_ "github.com/yourusername/caddy-model-router"
+	_ "github.com/iccyuan/model-router"
 )
 
 func main() {
