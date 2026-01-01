@@ -68,8 +68,8 @@ func (m ModelRouter) ServeHTTP(w http.ResponseWriter, r *http.Request, next cadd
 		zap.String("host", r.Host),
 	)
 
-	// 检查请求路径是否包含 "v1/chat/completions"
-	if !strings.Contains(r.URL.Path, "v1/chat/completions") {
+	// 检查请求路径是否包含 "chat/completions"（支持 /api/chat/completions 和 /v1/chat/completions）
+	if !strings.Contains(r.URL.Path, "chat/completions") {
 		m.logger.Info("路径不匹配，跳过处理",
 			zap.String("path", r.URL.Path),
 		)
@@ -118,7 +118,7 @@ func (m ModelRouter) ServeHTTP(w http.ResponseWriter, r *http.Request, next cadd
 		)
 		
 		for _, targetModel := range m.TargetModels {
-			m.logger.Debug("比较模型",
+			m.logger.Info("比较模型",
 				zap.String("request_model", model),
 				zap.String("target_model", targetModel),
 			)
@@ -139,7 +139,16 @@ func (m ModelRouter) ServeHTTP(w http.ResponseWriter, r *http.Request, next cadd
 	// 如果匹配到目标模型，重写路径
 	if shouldRewrite {
 		oldPath := r.URL.Path
-		r.URL.Path = strings.Replace(r.URL.Path, "v1/chat/completions", "v1/responses", 1)
+		
+		// 支持多种路径格式的重写
+		if strings.Contains(r.URL.Path, "/v1/chat/completions") {
+			r.URL.Path = strings.Replace(r.URL.Path, "/v1/chat/completions", "/v1/responses", 1)
+		} else if strings.Contains(r.URL.Path, "/api/chat/completions") {
+			r.URL.Path = strings.Replace(r.URL.Path, "/api/chat/completions", "/api/responses", 1)
+		} else {
+			// 通用替换
+			r.URL.Path = strings.Replace(r.URL.Path, "chat/completions", "responses", 1)
+		}
 		
 		m.logger.Info("路径重写成功",
 			zap.String("old_path", oldPath),
@@ -150,7 +159,13 @@ func (m ModelRouter) ServeHTTP(w http.ResponseWriter, r *http.Request, next cadd
 		// 如果有 RawPath，也需要更新
 		if r.URL.RawPath != "" {
 			oldRawPath := r.URL.RawPath
-			r.URL.RawPath = strings.Replace(r.URL.RawPath, "v1/chat/completions", "v1/responses", 1)
+			if strings.Contains(r.URL.RawPath, "/v1/chat/completions") {
+				r.URL.RawPath = strings.Replace(r.URL.RawPath, "/v1/chat/completions", "/v1/responses", 1)
+			} else if strings.Contains(r.URL.RawPath, "/api/chat/completions") {
+				r.URL.RawPath = strings.Replace(r.URL.RawPath, "/api/chat/completions", "/api/responses", 1)
+			} else {
+				r.URL.RawPath = strings.Replace(r.URL.RawPath, "chat/completions", "responses", 1)
+			}
 			m.logger.Info("RawPath 也已重写",
 				zap.String("old_raw_path", oldRawPath),
 				zap.String("new_raw_path", r.URL.RawPath),
